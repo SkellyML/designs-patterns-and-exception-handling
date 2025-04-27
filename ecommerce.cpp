@@ -5,6 +5,25 @@
 
 using namespace std;
 
+// Helper function to trim whitespace
+string trim(const string& str) {
+    size_t first = str.find_first_not_of(" \t\n\r\f\v");
+    if (string::npos == first) return "";
+    size_t last = str.find_last_not_of(" \t\n\r\f\v");
+    return str.substr(first, (last - first + 1));
+}
+
+// Helper function to convert string to uppercase
+string toUpper(string str) {
+    str = trim(str);
+    for (size_t i = 0; i < str.length(); i++) {
+        if (str[i] >= 'a' && str[i] <= 'z') {
+            str[i] = str[i] - ('a' - 'A');
+        }
+    }
+    return str;
+}
+
 // Exception classes
 class ECommerceException {
 private:
@@ -24,15 +43,16 @@ public:
     InvalidInputException() : ECommerceException("Invalid input!") {}
 };
 
-// Product class
+// Product class with 3-letter ID
 class Product {
 private:
-    int id;
+    string id;
     string name;
     double price;
 public:
-    Product(int id, const string& name, double price) : id(id), name(name), price(price) {}
-    int getId() const { return id; }
+    Product(const string& id, const string& name, double price) 
+        : id(toUpper(id)), name(name), price(price) {}
+    string getId() const { return id; }
     string getName() const { return name; }
     double getPrice() const { return price; }
 };
@@ -74,15 +94,16 @@ public:
              << "Total Amount: " << fixed << setprecision(2) << totalAmount << endl
              << "Payment Method: " << paymentMethod << endl
              << "Order Details:\n"
-             << left << setw(12) << "Product ID" << setw(20) << "Name" 
+             << left << setw(10) << "Product ID" << setw(20) << "Name" 
              << setw(10) << "Price" << setw(10) << "Quantity" << endl;
              
         for (int i = 0; i < itemCount; i++) {
             const Product& p = items[i]->getProduct();
-            cout << left << setw(12) << p.getId()
+            cout << left << setw(10) << p.getId()
                  << setw(20) << p.getName()
                  << fixed << setprecision(2) << setw(10) << p.getPrice()
-                 << setw(10) << items[i]->getQuantity() << endl;
+                 << setw(10) << items[i]->getQuantity()
+                 << endl;
         }
     }
 
@@ -136,11 +157,11 @@ private:
     static ECommerceSystem* instance;
     
     Product products[5] = {
-        {1, "Laptop", 56.00},
-        {2, "Smartphone", 48.00},
-        {3, "Headphones", 25.00},
-        {4, "Mouse", 1.50},
-        {5, "Keyboard", 4.99}
+        {"ABC", "Eraser", 56.00},
+        {"DEF", "Sharpener", 48.00},
+        {"GHI", "Ballpen", 25.00},
+        {"JKL", "Candy", 1.50},
+        {"MNO", "Gum", 4.99}
     };
     
     CartItem* cartItems[100];
@@ -152,54 +173,83 @@ private:
 
     // Helper function to validate yes/no input
     bool validateYesNo(char& choice) {
-        while (true) {
-            string input;
-            getline(cin, input);
-            
-            if (input.length() == 1) {
-                choice = toupper(input[0]);
-                if (choice == 'Y' || choice == 'N') {
-                    return true;
-                }
-            }
-            cout << "Invalid input! Please enter Y or N: ";
+        string input;
+        getline(cin, input);
+        input = trim(input);
+        if (input.length() == 1) {
+            choice = toupper(input[0]);
+            return (choice == 'Y' || choice == 'N');
         }
+        return false;
     }
 
-    // Helper function to validate numeric input
-    int validateNumberInput(const string& prompt, bool positiveOnly = true) {
-        while (true) {
-            cout << prompt;
-            string input;
+    // Helper function to validate product ID
+    string validateProductID() {
+        string input;
+        bool valid = false;
+        do {
+            cout << "Enter product ID to add to cart: ";
             getline(cin, input);
-            
+            input = trim(input);
+            if (input.length() == 3) {
+                valid = true;
+                for (char c : input) {
+                    if (!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z'))) {
+                        valid = false;
+                        break;
+                    }
+                }
+            }
+            if (!valid) {
+                cout << "Invalid input! Product ID must be 3 letters. Try again.\n";
+            }
+        } while (!valid);
+        return toUpper(input);
+    }
+
+    // Helper function to validate quantity
+    int validateQuantity() {
+        string input;
+        int quantity = 0;
+        bool valid = false;
+        
+        do {
+            cout << "Enter quantity: ";
+            getline(cin, input);
+            input = trim(input);
             try {
-                size_t pos;
-                int value = stoi(input, &pos);
-                
-                // Check if entire string was processed and meets positive requirement
-                if (pos == input.length() && (!positiveOnly || value > 0)) {
-                    return value;
+                quantity = stoi(input);
+                if (quantity > 0) {
+                    valid = true;
+                } else {
+                    cout << "Please enter a positive number: ";
                 }
             } catch (...) {
-                // Catch any conversion errors
+                cout << "Invalid input! Please enter a number: ";
             }
-            
-            cout << "Invalid input! Please enter " << (positiveOnly ? "a positive number" : "a number") << ": ";
-        }
+        } while (!valid);
+        
+        return quantity;
     }
 
     // Helper function to validate menu choice
     char validateMenuChoice() {
-        while (true) {
-            string input;
+        string input;
+        char choice = 0;
+        bool valid = false;
+        
+        do {
             getline(cin, input);
-            
+            input = trim(input);
             if (input.length() == 1 && input[0] >= '1' && input[0] <= '4') {
-                return input[0];
+                choice = input[0];
+                valid = true;
+            } else {
+                cout << "Invalid choice! Please enter 1-4: ";
             }
-            cout << "Invalid choice! Please enter 1-4: ";
-        }
+        } while (!valid);
+        
+        return choice;
     }
 
 public:
@@ -215,11 +265,11 @@ public:
 
     void displayProducts() {
         cout << "\nAvailable Products:\n"
-             << left << setw(12) << "Product ID" << setw(20) << "Name" 
+             << left << setw(15) << "Product ID" << setw(20) << "Name" 
              << setw(10) << "Price" << endl;
         
         for (const auto& product : products) {
-            cout << left << setw(12) << product.getId()
+            cout << left << setw(15) << product.getId()
                  << setw(20) << product.getName()
                  << fixed << setprecision(2) << setw(10) << product.getPrice()
                  << endl;
@@ -231,12 +281,12 @@ public:
         do {
             displayProducts();
             
-            int id = validateNumberInput("\nEnter product ID to add to cart: ", false);
+            string id = validateProductID();
             
             bool found = false;
             for (const auto& product : products) {
                 if (product.getId() == id) {
-                    int quantity = validateNumberInput("Enter quantity: ");
+                    int quantity = validateQuantity();
                     
                     if (cartItemCount < 100) {
                         cartItems[cartItemCount++] = new CartItem(product, quantity);
@@ -248,11 +298,15 @@ public:
             }
 
             if (!found) {
-                throw ProductNotFoundException();
+                cout << "Product not found! Try again.\n";
+                continue;
             }
 
             cout << "Add another product? (Y/N): ";
-            validateYesNo(choice);
+            if (!validateYesNo(choice)) {
+                cout << "Invalid input! Please enter Y or N: ";
+                continue;
+            }
         } while (choice == 'Y');
     }
 
@@ -264,12 +318,12 @@ public:
 
         double total = 0;
         cout << "\nYour Shopping Cart:\n"
-             << left << setw(12) << "Product ID" << setw(20) << "Name" 
+             << left << setw(10) << "Product ID" << setw(20) << "Name" 
              << setw(10) << "Price" << setw(10) << "Quantity" << endl;
         
         for (int i = 0; i < cartItemCount; i++) {
             const Product& p = cartItems[i]->getProduct();
-            cout << left << setw(12) << p.getId()
+            cout << left << setw(10) << p.getId()
                  << setw(20) << p.getName()
                  << fixed << setprecision(2) << setw(10) << p.getPrice()
                  << setw(10) << cartItems[i]->getQuantity()
@@ -280,7 +334,10 @@ public:
 
         cout << "\nCheckout? (Y/N): ";
         char choice;
-        validateYesNo(choice);
+        if (!validateYesNo(choice)) {
+            cout << "Invalid input! Please enter Y or N: ";
+            return;
+        }
         if (choice == 'Y') checkout();
     }
 
@@ -342,7 +399,8 @@ public:
     }
 
     void run() {
-        while (true) {
+        char choice;
+        do {
             cout << "\n===== E-Commerce Menu =====\n"
                  << "1. View Products\n"
                  << "2. View Cart\n"
@@ -350,7 +408,7 @@ public:
                  << "4. Exit\n"
                  << "Choice: ";
             
-            char choice = validateMenuChoice();
+            choice = validateMenuChoice();
 
             try {
                 switch (choice) {
@@ -369,7 +427,7 @@ public:
             } catch (const ECommerceException& e) {
                 cout << "Error: " << e.what() << endl;
             }
-        }
+        } while (choice != '4');
     }
 };
 
